@@ -7,7 +7,7 @@ services:
       dockerfile: API/Dockerfile
       
   database:
-    image: postgres:latest
+    image: postgres:15
     container_name: DATABASE
     environment:
       - POSTGRES_DB=BlazorDemo
