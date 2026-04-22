@@ -1,0 +1,150 @@
+﻿@page "/customers"
+@inject AppDbContext DbContext
+
+<h3>Customers</h3>
+
+@if (customers == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Customer Number</th>
+                <th>Last Name</th>
+                <th>First Name</th>
+                <th>DOB</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var customer in customers.Where(c => !c.IsDeleted))
+            {
+                <tr>
+                    <td>@customer.CustomerId</td>
+                    <td>@customer.CustomerNumber</td>
+                    <td>@customer.LastName</td>
+                    <td>@customer.FirstName</td>
+                    <td>@customer.Dob.ToShortDateString()</td>
+                    <td>
+                        <button class="btn btn-primary" @onclick="() => EditCustomer(customer)">Edit</button>
+                        <button class="btn btn-danger" @onclick="() => DeleteCustomer(customer)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <button class="btn btn-success" @onclick="AddCustomer">Add New Customer</button>
+
+    @if (isEditing)
+    {
+        <div class="modal" style="display:block;">
+            <div class="modal-content">
+                <h4>@(editingCustomer.CustomerId == 0 ? "Add" : "Edit") Customer</h4>
+                <form>
+                    <div class="form-group">
+                        <label>Customer Number</label>
+                        <input type="text" class="form-control" @bind="editingCustomer.CustomerNumber" />
+                    </div>
+                    <div class="form-group">
+                        <label>Last Name</label>
+                        <input type="text" class="form-control" @bind="editingCustomer.LastName" />
+                    </div>
+                    <div class="form-group">
+                        <label>First Name</label>
+                        <input type="text" class="form-control" @bind="editingCustomer.FirstName" />
+                    </div>
+                    <div class="form-group">
+                        <label>DOB</label>
+                        <input type="date" class="form-control" @bind="editingCustomer.Dob" />
+                    </div>
+                    <button type="button" class="btn btn-primary" @onclick="SaveCustomer">Save</button>
+                    <button type="button" class="btn btn-secondary" @onclick="CancelEdit">Cancel</button>
+                </form>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<Customer> customers = new();
+    private Customer editingCustomer = new();
+    private bool isEditing = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCustomers();
+    }
+
+    private async Task LoadCustomers()
+    {
+        customers = DbContext.Customers.ToList();
+    }
+
+    private void AddCustomer()
+    {
+        editingCustomer = new Customer { Dob = DateTime.UtcNow };
+        isEditing = true;
+    }
+
+    private void EditCustomer(Customer customer)
+    {
+        
+        editingCustomer = new Customer
+        {
+            CustomerId = customer.CustomerId,
+            CustomerNumber = customer.CustomerNumber,
+            LastName = customer.LastName,
+            FirstName = customer.FirstName,
+            Dob = customer.Dob,
+            IsDeleted = customer.IsDeleted,
+            CreateBy = customer.CreateBy,
+            CreateDate = customer.CreateDate,
+            ModifyBy = "USER",
+            ModifyDate = DateTime.UtcNow
+        };
+        isEditing = true;
+    }
+
+    private async Task SaveCustomer()
+    {
+        if (editingCustomer.CustomerId == 0)
+        {
+            DbContext.Customers.Add(editingCustomer);
+        }
+        else
+        {
+            var existing = await DbContext.Customers.FindAsync(editingCustomer.CustomerId);
+            if (existing != null)
+            {
+                DbContext.Entry(existing).CurrentValues.SetValues(editingCustomer);
+            }
+        }
+        await DbContext.SaveChangesAsync();
+        isEditing = false;
+        await LoadCustomers();
+    }
+
+    private void CancelEdit()
+    {
+        isEditing = false;
+    }
+
+    private async Task DeleteCustomer(Customer customer)
+    {
+        var existing = await DbContext.Customers.FindAsync(customer.CustomerId);
+        if (existing != null)
+        {
+            existing.IsDeleted = true;
+            existing.ModifyBy = "USER";
+            existing.ModifyDate = DateTime.UtcNow;
+            DbContext.Customers.Update(existing);
+        }
+        await DbContext.SaveChangesAsync();
+        await LoadCustomers();
+    }
+}

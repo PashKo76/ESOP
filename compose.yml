@@ -1,0 +1,17 @@
+services:
+  api:
+    image: ${DOCKER_REGISTRY-}api
+    container_name: API
+    build:
+      context: .
+      dockerfile: API/Dockerfile
+      
+  database:
+    image: postgres:latest
+    container_name: DATABASE
+    environment:
+      - POSTGRES_DB=BlazorDemo
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 8080:5432
